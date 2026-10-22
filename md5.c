@@ -5,9 +5,6 @@
 #include <errno.h>
 #include <stdint.h>
 
-#define BUF_SIZE 4096
-#define U32_MASK 0xffffffff
-
 uint32_t s[] = {
     7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
     5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
@@ -39,15 +36,14 @@ uint32_t b0 = 0xefcdab89;
 uint32_t c0 = 0x98badcfe;
 uint32_t d0 = 0x10325476;
 
-uint8_t block[64] = { 0 };
-
-uint64_t block_size = 0;
 uint64_t byte_count = 0;
 
-void process_block(void) {
+void process_block(uint8_t block[]) {
+    //TODO uint8_t [64] to uint64_t [8]
+
     uint32_t M[16];
 	for (int i = 0; i < 16; i++) {
-		int j = i * 4;
+		int j = i 
 		M[i] = block[j]
             | block[j + 1] << 8
             | block[j + 2] << 16 
@@ -91,21 +87,15 @@ void process_block(void) {
     d0 += D;
 }
 
-void process_byte(uint8_t c) {
-    //printf("process_byte: %c\n", c);
-
-    block[block_size++] = c;
-    if (block_size == 64) {
-        process_block();
-        block_size = 0;
-    }
-}
-
 int process_input(int fd, char *filename) {
+    uint64_t byte_count = 0;
 
     while (1) {
-        uint8_t buf[64 * 4096];
+        //512-bit
+        uint8_t buf[64];
+
         ssize_t n = read(fd, buf, sizeof(buf));
+        
         if (n == -1) {
 			switch (errno) {
 			case EINTR:
@@ -118,24 +108,35 @@ int process_input(int fd, char *filename) {
             break;
         }
 
-        for (int i = 0; i < n; i++) {
-            uint8_t byte = buf[i];
-			process_byte(byte);
-			byte_count++;
+        byte_count += n;
+        process_block(buf);
+    }
+
+    buf[n++] = 0x80;
+
+    if (n == 64) {
+        process_block(buf);
+        n = 0;
+    }
+
+    while (n != 56 ){
+        buf[n++] = 0;
+
+        if (n == 64) {
+            process_block(buf);
+            n = 0;
         }
+
     }
 
-    process_byte(0x80);
-    while (block_size != 56 ){
-        process_byte(0);
-    }
-
+    //??
 	uint64_t bits_count = byte_count << 3;
-
 	for (int i = 0; i < 8; i++) {
         uint8_t byte = bits_count >> (i * 8);
-		process_byte(byte);
+        buf[n + i] = byte;
 	}
+
+    process_block(buf);
 
 	if (block_size != 0)
 		return -1;
@@ -144,8 +145,6 @@ int process_input(int fd, char *filename) {
 }
 
 void print_hash(char *filename) {
-    printf("a0=%u b0=%u c0=%u d0=%u\n", a0, b0, c0, d0);
-
     uint32_t words[] = { a0, b0, c0, d0 };
 
     for (int i = 0; i < 4; i++) {
@@ -156,24 +155,36 @@ void print_hash(char *filename) {
 			printf("%02x", byte);
 		}
 	}
-
     printf("  %s\n", filename);
 }
 
 int main(int argc, char *argv[]) {
     
-    char *filename;
-    if (argc > 1 && strcmp(filename = argv[1], "-") != 0) {
-        int fd = open(filename, O_RDONLY);
-
-        if (fd == -1) {
-            printf("md5sum: %s: %s\n", filename, strerror(errno));
+    if (argc == 1) {
+        int ret = process_input(fd, filename);
+        if (!ret)
             return 1;
+        
+        print_hash(filename);
+
+        return 0;
+    }
+
+    for (int i = 1; i < argc; i++) {
+        char *filename = argv[i];
+        int fd = 0
+        if (strcmp(filename,"-") != 0) {
+            fd = open(filename, O_RDONLY);
+
+            if (fd == -1) {
+                printf("md5sum: %s: %s\n", filename, strerror(errno));
+                return 1;
+            }
         }
 
         int ret = process_input(fd, filename);
-        if (ret == -1)
-            return ret;
+        if (!ret)
+            return 1;
 
         print_hash(filename);
     }
