@@ -2,7 +2,7 @@ CFLAGS = -fPIC -Wall -Wextra -Werror -std=c11 -I include
 
 SRC = md5.c
 OBJ = $(SRC:.c=.o)
-BIN = $(SRC:.c=.out)
+BIN = $(SRC:.c=)
 
 all: $(BIN)
 

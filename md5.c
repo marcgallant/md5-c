@@ -39,16 +39,17 @@ uint32_t d0 = 0x10325476;
 uint64_t byte_count = 0;
 
 void process_block(uint8_t block[]) {
-    //TODO uint8_t [64] to uint64_t [8]
 
     uint32_t M[16];
+
 	for (int i = 0; i < 16; i++) {
-		int j = i 
+        int j = i * 4;
 		M[i] = block[j]
             | block[j + 1] << 8
             | block[j + 2] << 16 
             | block[j + 3] << 24;
     }
+
 	uint32_t A = a0;
 	uint32_t B = b0;
 	uint32_t C = c0;
@@ -89,12 +90,12 @@ void process_block(uint8_t block[]) {
 
 int process_input(int fd, char *filename) {
     uint64_t byte_count = 0;
+    //512-bit
+    uint8_t buf[64];
+    ssize_t n;
 
     while (1) {
-        //512-bit
-        uint8_t buf[64];
-
-        ssize_t n = read(fd, buf, sizeof(buf));
+        n = read(fd, buf, 64);
         
         if (n == -1) {
 			switch (errno) {
@@ -104,11 +105,12 @@ int process_input(int fd, char *filename) {
                 printf("md5sum: %s: %s", filename, strerror(errno));
 				return -1;
 			}
-		} else if (n == 0) {
-            break;
-        }
+		}
 
         byte_count += n;
+        if (n < 64)
+            break;
+
         process_block(buf);
     }
 
@@ -138,9 +140,6 @@ int process_input(int fd, char *filename) {
 
     process_block(buf);
 
-	if (block_size != 0)
-		return -1;
-
     return 0;
 }
 
@@ -159,20 +158,20 @@ void print_hash(char *filename) {
 }
 
 int main(int argc, char *argv[]) {
-    
+   
     if (argc == 1) {
-        int ret = process_input(fd, filename);
-        if (!ret)
+        int ret = process_input(0, "-");
+        if (ret)
             return 1;
         
-        print_hash(filename);
+        print_hash("-");
 
         return 0;
     }
 
     for (int i = 1; i < argc; i++) {
         char *filename = argv[i];
-        int fd = 0
+        int fd = 0;
         if (strcmp(filename,"-") != 0) {
             fd = open(filename, O_RDONLY);
 
@@ -183,7 +182,7 @@ int main(int argc, char *argv[]) {
         }
 
         int ret = process_input(fd, filename);
-        if (!ret)
+        if (ret)
             return 1;
 
         print_hash(filename);
