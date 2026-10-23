@@ -56,3 +56,6 @@ dkms.conf
 
 md5.sh
 md5
+
+*.stderr
+*.stdout

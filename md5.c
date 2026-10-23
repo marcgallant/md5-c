@@ -134,7 +134,7 @@ int process_file(char *filename, char digest[33]) {
         fd = open(filename, O_RDONLY);
 
         if (fd == -1) {
-            printf("md5sum: %s: %s\n", filename, strerror(errno));
+            fprintf(stderr, "md5sum: %s: %s\n", filename, strerror(errno));
             return -1;
         }
     }
@@ -147,7 +147,7 @@ int process_file(char *filename, char digest[33]) {
 			case EINTR:
 				continue;
 			default:
-                printf("md5sum: %s: %s", filename, strerror(errno));
+                fprintf(stderr, "md5sum: %s: %s", filename, strerror(errno));
                 close(fd);
 				return -1;
 			}
@@ -211,8 +211,7 @@ void print_digest(char *filename, char digest[33]) {
     else
         printf("%s %c%s", digest, opts.binary == 1 ? '*' : ' ', filename);
 
-    if (!opts.zero)
-        puts("");
+    printf("%c", opts.zero ? '\0' : '\n');
 }
 
 struct checksum_entry {
@@ -252,7 +251,7 @@ int parse_line(char *line, ssize_t len, struct checksum_entry *entry) {
 int check_md5(char * filename) {
     FILE *fp = fopen(filename, "r");
     if (!fp) {
-        printf("md5sum: %s: %s\n", filename, strerror(errno));
+        fprintf(stderr, "md5sum: %s: %s\n", filename, strerror(errno));
         return -1;
     }
 
@@ -271,7 +270,7 @@ int check_md5(char * filename) {
         char digest[33] = { 0 };
 
        if (parse_line(line, read, &entry)) {
-           if (!opts.status) printf("md5sum: %s: %lu: improperly formatted MD5 checksum line\n", filename, nlines);
+           if (!opts.status) fprintf(stderr, "md5sum: %s: %lu: improperly formatted MD5 checksum line\n", filename, nlines);
            unformated++;
        }
         else if (process_file(entry.filename, digest) && !opts.ignore_missing) {
@@ -292,20 +291,20 @@ int check_md5(char * filename) {
     fclose(fp);
 
     if (unformated == nlines) {
-        if (!opts.status) printf("md5sum: %s: no properly formatted checksum lines found\n", filename);
+        if (!opts.status) fprintf(stderr, "md5sum: %s: no properly formatted checksum lines found\n", filename);
         return -1;
     }
     else if (unformated != 0) {
-        if (!opts.status) printf("md5sum: WARNING: %lu line is improperly formatted\n", unformated);
+        if (!opts.status) fprintf(stderr, "md5sum: WARNING: %lu line%s is improperly formatted\n", unformated, unformated > 1 ? "s" : "");
         if (!opts.strict) return -1;
     }
     
     if (mismatch != 0) {
-        if (!opts.status) printf("md5sum: WARNING: %lu computed checksum did NOT match\n", mismatch);
+        if (!opts.status) fprintf(stderr, "md5sum: WARNING: %lu computed checksum%s did NOT match\n", mismatch, mismatch > 1 ? "s" : "");
     }
 
     if (missing != 0) {
-        if (!opts.status) printf("md5sum: WARNING: %lu listed file could not be read\n", missing);
+        if (!opts.status) fprintf(stderr, "md5sum: WARNING: %lu listed file%s could not be read\n", missing, missing > 1 ? "s" : "");
     }
     
     return mismatch + missing;
