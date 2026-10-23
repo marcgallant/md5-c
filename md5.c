@@ -3,12 +3,12 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <getopt.h>
 
 #define BLOCK_SIZE 64
 
@@ -21,7 +21,6 @@ struct options {
     int binary;
     int check;
     int tag;
-    int text;
     int zero;
     int ignore_missing;
     int quiet;
@@ -30,7 +29,7 @@ struct options {
     int warn;
 };
 
-static struct options opts = {0};
+static struct options opts = { 0 };
 
 // s specifies the per-round shift amounts
 uint32_t s[] = {
@@ -210,7 +209,7 @@ void print_digest(char *filename, char digest[33]) {
     if (opts.tag)
         printf("MD5 (%s) = %s", filename, digest);
     else
-        printf("%s %c%s", digest, opts.binary ? '*' : ' ', filename);
+        printf("%s %c%s", digest, opts.binary == 1 ? '*' : ' ', filename);
 
     if (!opts.zero)
         puts("");
@@ -224,6 +223,7 @@ struct checksum_entry {
 int parse_line(char *line, ssize_t len, struct checksum_entry *entry) {
     if (len < 35) 
         return -1;
+
     
     for (int i = 0; i < 32; i++) {
         if (!isxdigit(line[i]))
@@ -233,8 +233,9 @@ int parse_line(char *line, ssize_t len, struct checksum_entry *entry) {
     if (line[32] != ' ')
         return -1;
 
-    if (line[33] != ' ' || line[33] != '*')
+    if (line[33] != ' ' && line[33] != '*')
         return -1;
+
 
     if (line[34] == '\0')
         return -1;
@@ -243,12 +244,12 @@ int parse_line(char *line, ssize_t len, struct checksum_entry *entry) {
     entry->digest[32] = '\0';
 
     entry->filename = &line[34];
+    entry->filename[len - 34 - 1] = '\0';
 
     return 0;
 }
 
 int check_md5(char * filename) {
-
     FILE *fp = fopen(filename, "r");
     if (!fp) {
         printf("md5sum: %s: %s\n", filename, strerror(errno));
@@ -263,27 +264,26 @@ int check_md5(char * filename) {
     size_t unformated = 0;
     size_t mismatch = 0;
     size_t missing = 0;
+
     while ((read = getline(&line, &len, fp)) != -1) {
         nlines++;
-        struct checksum_entry *entry = { 0 };
+        struct checksum_entry entry = { 0 };
+        char digest[33] = { 0 };
 
-       if (parse_line(line, read, entry)) {
+       if (parse_line(line, read, &entry)) {
            if (!opts.status) printf("md5sum: %s: %lu: improperly formatted MD5 checksum line\n", filename, nlines);
            unformated++;
        }
-
-        char digest[33] = { 0 };
-        if (process_file(entry->filename, digest) && !opts.ignore_missing) {
-            if (!opts.status) printf("%s: FAILED open or read\n", entry->filename);
+        else if (process_file(entry.filename, digest) && !opts.ignore_missing) {
+            if (!opts.status) printf("%s: FAILED open or read\n", entry.filename);
             missing++;
         }
-
-        if (strcmp(digest, entry->digest) != 0) {
-            if (!opts.status) printf("%s: FAILED\n", entry->filename);
+        else if (strcmp(digest, entry.digest) != 0) {
+            if (!opts.status) printf("%s: FAILED\n", entry.filename);
             mismatch++;
         }
         else if (!opts.quiet)
-            if (!opts.status) printf("%s: OK\n", entry->filename);
+            if (!opts.status) printf("%s: OK\n", entry.filename);
     }
 
     if (line)
@@ -295,7 +295,7 @@ int check_md5(char * filename) {
         if (!opts.status) printf("md5sum: %s: no properly formatted checksum lines found\n", filename);
         return -1;
     }
-    else {
+    else if (unformated != 0) {
         if (!opts.status) printf("md5sum: WARNING: %lu line is improperly formatted\n", unformated);
         if (!opts.strict) return -1;
     }
@@ -393,8 +393,7 @@ int main(int argc, char *argv[]) {
                 opts.check = 1;
                 break;
             case 't':
-                opts.text = 1;
-                opts.binary = 0;
+                opts.binary = -1;
                 break;
             case 'z':
                 opts.zero = 1;
@@ -420,7 +419,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if ((opts.binary || opts.text) && opts.check) {
+    if ((opts.binary) && opts.check) {
         printf("md5sum: the --binary and --text options are meaningless when verifying checksums\n");
         return option_error();
     }

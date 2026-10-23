@@ -1,0 +1,3 @@
+b1946ac92492d2347c6235b432611184  files/hello.txt
+d41d8cd98f00b204e98009984cf8427e  files/empty.txt
+a93889c86ded38cb785462a789eef23d  files/random_4kb.bin
