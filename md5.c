@@ -269,19 +269,25 @@ int check_md5(char * filename) {
         struct checksum_entry entry = { 0 };
         char digest[33] = { 0 };
 
-       if (parse_line(line, read, &entry)) {
-           if (!opts.status) fprintf(stderr, "md5sum: %s: %lu: improperly formatted MD5 checksum line\n", filename, nlines);
-           unformated++;
-       }
-        else if (process_file(entry.filename, digest) && !opts.ignore_missing) {
+        if (parse_line(line, read, &entry)) {
+            if (!opts.status) fprintf(stderr, "md5sum: %s: %lu: improperly formatted MD5 checksum line\n", filename, nlines);
+            unformated++;
+            continue;
+        }
+
+        if (process_file(entry.filename, digest) && !opts.ignore_missing) {
             if (!opts.status) printf("%s: FAILED open or read\n", entry.filename);
             missing++;
+            continue;
         }
-        else if (strcmp(digest, entry.digest) != 0) {
+        
+        if (strcmp(digest, entry.digest) != 0) {
             if (!opts.status) printf("%s: FAILED\n", entry.filename);
             mismatch++;
+            continue;
         }
-        else if (!opts.quiet)
+        
+        if (!opts.quiet)
             if (!opts.status) printf("%s: OK\n", entry.filename);
     }
 

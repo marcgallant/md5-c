@@ -58,3 +58,34 @@ echo "7"
 test_suite --help
 echo "8"
 test_suite --version
+
+echo "Check flags"
+
+echo "9"
+test_suite -c --ignore-missing files/checksum.txt
+test_suite -c --ignore-missing files/checksum_missing.txt
+test_suite -c --ignore-missing files/checksum_mismatch.txt
+
+echo "10"
+test_suite -c --quiet files/checksum.txt
+test_suite -c --quiet files/checksum_missing.txt
+test_suite -c --quiet files/checksum_mismatch.txt
+
+echo "11"
+test_suite -c --status files/checksum.txt
+test_suite -c --status files/checksum_missing.txt
+test_suite -c --status files/checksum_mismatch.txt
+
+echo "12"
+test_suite -c --strict files/checksum.txt
+test_suite -c --strict files/checksum_missing.txt
+test_suite -c --strict files/checksum_mismatch.txt
+
+echo "13"
+test_suite -c --warn files/checksum.txt
+test_suite -c --warn files/checksum_missing.txt
+test_suite -c --warn files/checksum_mismatch.txt
+
+test_suite -c -w files/checksum.txt
+test_suite -c -w files/checksum_missing.txt
+test_suite -c -w files/checksum_mismatch.txt
